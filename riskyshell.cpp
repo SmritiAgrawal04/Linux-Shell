@@ -118,9 +118,17 @@ int change_dir(const char* path){
 	return(chdir(path));
 }
 
+void my_alarm(int time){
+	cout << "Alert Bitch!\n";
+	alarm(10);
+	signal(SIGALRM, my_alarm);
+}
+
 int main(){
 		cout << "\033[H\033[J";
         call_my_shell();
+        // signal(SIGALRM, my_alarm);
+        // alarm(10);
         char command[256];
 
         // signal(SIGINT , signal_handler);
