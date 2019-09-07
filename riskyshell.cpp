@@ -10,17 +10,18 @@
 #include<fcntl.h>
 #include<vector>
 #include<fstream>
-//#include<conio>
+#include<stack>
 #include<cstdlib>
 
 using namespace std;
 
-void call_my_shell(){
-		// clear();
-        cout << "\t\t\t\tSMRITI'S SHELL\n\n\n" ;
-        // cout << "\t\tUSE AT YOUR OWN RISK\n\n";
-        // sleep(2);
-} 
+stack<pid_t> processid;
+bool fg =false;
+bool bg = false;
+int pipecount =0;
+int ptr = 0;
+int diff = 0;
+vector<string> hist; 
 
 void view_mydir(){
 	char mydir[1024];
@@ -36,7 +37,6 @@ void view_mydir(){
 		return;
 	}
 	else{
-
 	}
 	close(fd);
 }*/
@@ -49,10 +49,11 @@ void view_mydir(){
 	}
 	dup2(fd , 1);
 	close(fd);
-
 }*/
 
-void my_fork(char** par , bool in , bool out , bool apend , int k){
+void my_fork(char** par , bool out , bool apend , char* o , char* a){
+		// cout << "fg = " <<fg;
+		// cout << "bg = " << bg;
 	
 		pid_t childpid = fork();
 
@@ -61,43 +62,74 @@ void my_fork(char** par , bool in , bool out , bool apend , int k){
 		
 		else if(childpid == 0){
 			// In child process
-			if(in){
-				/*int fd = open(par[k+1] , O_RDONLY , 0641);
+			/*if(in){
+				int fd = open(par[k+1] , O_RDONLY , 0641);
 				if(fd < 0){
 				perror("Error in loading input file.");
 				return;
 				}
 				dup2(fd ,0);
-				close(fd);*/
-			}			
+				close(fd);
+			}*/	
+			
 
-			else if(out){
-				// cout << par[k+1];
-				int fd = open(par[k+1] , O_WRONLY | O_CREAT , 0641);
-				if(fd < 0){
-				perror("Error in opening output file.");
-				return;
+			/*if(bg){
+				// cout <<"hi" <<bg;
+				bg = false;
+				processid.push(getpid());
+				if(kill(getpid() , SIGTSTP) < 0)
+					perror("kill(SIGTSTP)");
+				
+			}	
+
+			if(fg){
+				// tcgetpgrp();
+				// cout << "In FG";
+				fg = false;
+				if(!processid.empty()){
+					pid_t temp = processid.top();
+					processid.pop();
+					if(kill(temp , SIGCONT) < 0)
+						perror("kill(SIGCONT)");
+				}
+				
+
 			}
+			*/	
+
+			if(out){
+				out = false;
+				// cout << par[k+1];
+				int fd = open(o , O_WRONLY | O_CREAT ,0644);
+				if(fd < 0){
+					perror("Error in opening output file.");
+					return;
+					// exit(0);
+				}
 				dup2(fd , 1);
 				close(fd);
+				
 		}
 
-			else if(apend){
-				int fd = open(par[k+1] , O_CREAT | O_WRONLY | O_APPEND , 0644);
+			if(apend){
+				apend = false;
+				int fd = open(a , O_CREAT | O_WRONLY | O_APPEND , 0644);
     			if (fd < 0) {
         			perror("Error in appending to the file.");
 					return;
         		}
         		dup2(fd , 1);
         		close(fd);
+        		
     	}
 			
-		execvp(par[0] , par);
+			execvp(par[0] ,  par);
 	}
 			// perror(command);
 		else{
 			// In parent process
-			wait(NULL);
+			if(!bg)
+				wait(NULL);
 			
 		}
 	
@@ -119,16 +151,91 @@ int change_dir(const char* path){
 }
 
 void my_alarm(int time){
-	cout << "Alert Bitch!\n";
-	alarm(10);
+	cout << "ALERT! ALERT!! ALERT!!!\n";
+	alarm(100);
 	signal(SIGALRM, my_alarm);
 }
 
+void print_history(){
+	for(int i = hist.size()-1 ; i > -1 ; i--){
+		cout << hist[i] << endl;
+	}
+}
+
+vector<char*> split_string(char command[256]){
+	vector<char*> parameters;
+	char* temp = strtok(command, " ");
+	while(temp != NULL){
+	parameters.push_back(temp);
+	temp = strtok(NULL, " ");
+	}
+	return parameters;
+}
+
+void pipe_fork(char** par , int len){
+	int fd[2];
+	int des = 0;
+	int cmd_count = pipecount + 1;
+	// cout << "cmd_count =" << cmd_count << endl;
+	for(int i = 0 ; i < cmd_count ; i++){
+		 pipe(fd);
+
+		pid_t childpid = fork();
+
+		if(childpid < 0)
+			perror("Fork not possible"); 
+		
+		if(childpid == 0){
+			dup2(des , 0);
+			if(i+1 < cmd_count)
+				dup2(fd[1] , STDOUT_FILENO);
+
+			close(fd[0]);
+			close(fd[1]);
+
+			/*for(int k = 0 ; k < len ; k++){
+				cout << par[k] << endl;
+			}*/
+			 // cout<<ptr<<"dobara\n"<<len<<"length\n";
+		 // cout<<par[ptr]<<"fefefe\n";
+		while(ptr < len)
+			{   if(strcmp(par[ptr],"|")!=0)
+				{ptr++;
+                 // cout<<"inside while inside if "<<ptr<<endl;
+				}
+                else
+                	break;
+			}// cout << par[ptr] << endl;
+			ptr++;		
+			   // cout <<"After increment"<< ptr<<endl;
+		char** abcd = new char*[2];
+
+		
+			abcd[0] = par[diff];
+			abcd[1] = par[diff+1];
+		
+		  // cout << "abcd[0] =" << abcd[0]<<endl;
+		  // cout << "abcd[1] =" << abcd[1]<<endl;
+		diff = ptr - diff ;
+		// cout << "diff = "<< diff;
+		execvp(abcd[0] , abcd);
+			
+		}
+		else{
+			wait(NULL);
+			des = fd[0];
+			close(fd[1]);
+		}
+	}
+}
+
 int main(){
+	pid_t ppid = getpid();
+
 		cout << "\033[H\033[J";
-        call_my_shell();
-        // signal(SIGALRM, my_alarm);
-        // alarm(10);
+		cout << ppid;
+        signal(SIGALRM, my_alarm);
+        alarm(1000);
         char command[256];
 
         // signal(SIGINT , signal_handler);
@@ -136,44 +243,60 @@ int main(){
          while(1){
         	view_mydir();
         	cin.getline(command , 256);
+
+        	if(strcmp(command , "") == 0)
+        		continue;
 			// void enterinput();
-			vector<char*> parameters;
-			char* temp = strtok(command, " ");
-			while(temp != NULL){
-				parameters.push_back(temp);
-				temp = strtok(NULL, " ");
-			}
+			string cmd = string(command);
+			// cout << cmd;
+			hist.push_back(cmd);
+
+			if(strcmp(command , "history") == 0)
+				print_history();
+			if(strcmp(command , "$$") == 0)
+				cout << ppid << endl;
+
+			vector<char*> parameters = split_string(command);
+			
 
 			bool in = false , out = false , apend = false;
-			int k = 0;
+			char* a;
+			char *o;
 
 			char** par = new char*[parameters.size()+1];
+
     		for ( int i = 0; i < parameters.size(); i++ ){
       			par[i] = parameters[i];
-      			if(strcmp(par[i] ,"<") == 0){
-      				in = true;
-      				k = i;
-      				 par[i] = NULL;
-      			}
+      			if(strcmp(parameters[i] , "|") == 0)
+      				pipecount++;
+      		}
+      		// cout << pipecount;
+      		par[parameters.size()] = NULL;
+
+      		for ( int i = 0; i < parameters.size(); i++ ){
+      			// cout << par[i+1] << " ";
       			if(strcmp(par[i] ,">") == 0){
       				out = true;
-      				k = i;
+      				o = par[i+1];
+      				// cout << o;
       				par[i] = NULL;
-      			}
-      			if(strcmp(par[i] ,">>") == 0){
+      				//par[i+1] = NULL;
+      			 }
+
+      			else if(strcmp(par[i] ,">>") == 0){
       				apend = true;
-      				k = i;
+      				a = par[i+1];
       				par[i] = NULL;
       			}
     		}
 
-    		par[parameters.size()] = NULL;
 
-			/*int i = 0;
-			while(i < parameters.size()){
-				cout << parameters[i] << endl;
-				i++;
-			}*/
+    		if(pipecount > 0){
+    			// cout<< "hi";
+      			pipe_fork(par , parameters.size());
+      			// cout << "bye";
+      		}
+			
 			if(strcmp(command , "exit") == 0)
 				return 0;
 			else if (strcmp(par[0] , "cd") == 0){
@@ -181,10 +304,8 @@ int main(){
 					cout << "No such directory exists!";
 			}
 
-			 /*else if(in || out)
-				 in ? redirect_input(par[k+1]) : redirect_output(par[k+1]);*/
-
 			else
-				my_fork(par ,in , out , apend , k);
-         }
+				my_fork(par , out , apend , o , a);
+          }
 }
+
