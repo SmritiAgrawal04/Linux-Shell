@@ -15,4 +15,4 @@
 #include<cstdlib>
 using namespace std;
 
-void my_fork(char**  , bool  , bool  , char*  , char* );
+void my_fork(char**  , bool  , bool  , char*  , char* ,int*);

@@ -1,1 +1,1 @@
-void pipe_fork(char**  , int ,int , int , int);
+void pipe_fork(char[]  , int ,int , int , int , int*);

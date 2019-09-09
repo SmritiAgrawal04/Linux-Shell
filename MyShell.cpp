@@ -13,6 +13,7 @@
 #include<unordered_map>
 #include<stack>
 #include<cstdlib>
+#include<termios.h>
 #include "fork_it.h"
 #include "pipe_it.h"
 // #include "AliasD.h"
@@ -23,12 +24,23 @@ using namespace std;
 stack<pid_t> processid;
 vector<string> hist;
 unordered_map<string, string> umap; 
+int stat;
+
+void check_input(char [] ,pid_t );
+
 
 void view_mydir(){
 	char mydir[1024];
 	getcwd(mydir,sizeof(mydir));
 	cout << mydir;
 	cout<< "$" << endl;
+}
+
+void noncanonical_mode(){
+ struct termios term;
+ term.c_lflag &= ~(ICANON);
+ tcgetattr(1 , &term);
+ tcsetattr(1,TCSAFLUSH , &term);
 }
 
 /*void signal_handler(int sig_num){
@@ -39,9 +51,15 @@ void view_mydir(){
 	// exit(sig_num);
 }*/
 
-int change_dir(const char* path){
-	if(strcmp(path , "~") == 0)
-		path = "/home/smriti/";
+
+
+int change_dir(const char* path , pid_t ppid){
+	if(strcmp(path , "~") == 0){
+		char command[] = "echo $HOME"; 
+		check_input(command , ppid);
+	}
+		// path = "/home/smriti/";
+		
 	return(chdir(path));
 }
 
@@ -75,11 +93,20 @@ void check_input(char command[256] ,pid_t ppid){
     if(strcmp(command , "exit") == 0)
 		exit(0);
 
-	if(strcmp(command , "history") == 0)
+	if(strcmp(command , "history") == 0){
+		stat = 0;
 		print_history();
+	}
 
-	if(strcmp(command , "$$") == 0)
+	if(strcmp(command , "$$") == 0){
+		stat = 0;
 		cout << ppid << endl;
+	}
+
+	if(strcmp(command , "$?") == 0){
+		stat = 0;
+		cout << stat << endl;
+	}
 
 	vector<char*> parameters = split_string(command);
 
@@ -92,13 +119,13 @@ void check_input(char command[256] ,pid_t ppid){
       	par[parameters.size()] = NULL;
 
 	if (strcmp(par[0] , "cd") == 0){
-		if(change_dir(par[1]) == -1)
+		if(change_dir(par[1] , ppid) == -1 && par[1] != "~")
 			cout << "No such directory exists!";
+		stat = 0;
 	}
 
-	
-
 	if(strcmp(par[0] , "echo") == 0 ){
+		stat = 0;
 		ifstream des;
 		string file;
 		vector<string> lines ;
@@ -173,15 +200,16 @@ void check_input(char command[256] ,pid_t ppid){
 
     		if(pipecount > 0){
     			// cout<< "hi";
-      			pipe_fork(par , parameters.size() , 0 ,0 , pipecount);
+      			pipe_fork(command , parameters.size() , 0 ,0 , pipecount , &stat);
       			// cout << "bye";
       		}
       		
-				my_fork(par , out , apend , o , a);
+				my_fork(par , out , apend , o , a , &stat);
 		}	
-		
+
 
 int main(){
+	noncanonical_mode();
 	pid_t ppid = getpid();
 	
 		cout << "\033[H\033[J";

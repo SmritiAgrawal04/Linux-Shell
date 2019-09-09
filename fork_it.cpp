@@ -15,7 +15,7 @@
 
 using namespace std;
 
-void my_fork(char** par , bool out , bool apend , char* o , char* a){
+void my_fork(char** par , bool out , bool apend , char* o , char* a , int* stat){
 		// cout << "fg = " <<fg;
 		// cout << "bg = " << bg;
 	
@@ -58,8 +58,9 @@ void my_fork(char** par , bool out , bool apend , char* o , char* a){
 			// perror(command);
 		else{
 			// In parent process
-			
-				wait(NULL);
+				int status;
+				wait(&status);
+				*stat = WEXITSTATUS(status);
 			
 		}
 	
