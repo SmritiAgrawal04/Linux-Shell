@@ -15,6 +15,19 @@
 
 using namespace std;
 
+vector<char*> split_endline(char waste_array[2000]){
+		vector<char*> lines;
+		int i =0 ;
+		//cout<<waste_array;
+		char* s = strtok(waste_array , "10");
+		while(i < 5){
+		//	cout<<s;
+			lines.push_back(s);
+			s = strtok(NULL , "10");
+			i++;
+		}
+		return lines;
+	}
 
 vector<char*> split_colon(char waste_array[2000]){
 		vector<char*> lines;
@@ -30,23 +43,25 @@ vector<char*> split_colon(char waste_array[2000]){
 		return lines;
 	}
 
-int main(){
+void bash(){
 	string host , path;
-
+	// cout << "in bash";
 	ifstream fd_host;
 	fd_host.open("/etc/hostname" , ifstream::in);
 	 if(fd_host){
 		getline(fd_host ,host);
-		fd_host.close();
+		// fd_host.close();
 	 }
+	 fd_host.close();
 	// cout << host << endl;
 
 	ifstream fd_path;
 	fd_path.open("/etc/environment" , ifstream::in);
 	if(fd_path){
 		getline(fd_path , path);
-		fd_path.close();
+		// fd_path.close();
 	}
+	fd_path.close();
 	// cout << path << endl;
 
 	ifstream fd;
@@ -62,7 +77,7 @@ int main(){
 	 int i;
 	for(i = 0 ; i < waste.length() ; i++)
 		waste_array[i] = waste[i];
-	
+	waste_array[i] = '\0';
 
 	vector<char*> lines = split_colon(waste_array);
 	/*for(int i = 0; i < lines.size() ; i++){
@@ -71,9 +86,11 @@ int main(){
 	fd.close();
 
 	int fd_bash = open("bash_rc.txt" , O_CREAT | O_WRONLY | O_APPEND , 0644);
-	if(fd_bash < 0)
+	if(fd_bash < 0){
 		perror("ERROR");
-
+		return;
+	}
+	int savep=dup(1);
 	dup2(fd_bash , 1);
 	cout << "$" << endl;
 	cout << host << endl;
@@ -81,7 +98,8 @@ int main(){
 	cout << lines[5] << endl;
 	cout << lines[0] << endl;
 
-	close(fd_bash); 
+    dup2(savep , 1);
+    close(fd_bash);
+	return;
 
-	return 0;
 }
